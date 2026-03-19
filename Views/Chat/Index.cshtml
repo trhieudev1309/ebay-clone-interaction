@@ -1,0 +1,56 @@
+@model IEnumerable<EbayChat.Models.DTOs.BoxChatDTO>
+@{
+    Layout = null;
+}
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <title>Chat Application</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="~/css/ChatIndex.css" rel="stylesheet" asp-append-version="true" />
+</head>
+<body>
+    <div class="chat-container">
+        <!-- Sidebar (Inbox) -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h5><i class="fas fa-comments"></i> Messages</h5>
+            </div>
+            <div class="sidebar-body" id="chatList"></div>
+        </div>
+
+        <!-- Main Chat Area -->
+        <div class="main-chat" id="mainChat">
+            <div class="chat-header">
+                <div class="chat-header-info">
+                    <h6 id="chatName">Select a conversation</h6>
+                    <p id="chatStatus">Active now</p>
+                </div>
+            </div>
+
+            <div class="chat-messages" id="messagesContainer"></div>
+
+            <div class="chat-input-area">
+                <div class="input-group">
+                    <input type="text" class="form-control" id="messageInput" placeholder="Type a message...">
+                    <button class="btn-send" id="sendBtn">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/6.0.1/signalr.min.js"></script>
+    <script>
+        const currentUserId = @ViewBag.UserId;
+        const initialChats = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model));
+    </script>
+    <script src="~/js/chat-logic.js" asp-append-version="true"></script>
+</body>
+</html>

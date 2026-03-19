@@ -1,0 +1,108 @@
+@using EbayChat.Entities
+@model IEnumerable<OrderTable>
+@{
+    ViewData["Title"] = "My Orders";
+}
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-bag-check"></i> Purchase History</h2>
+        <a href="/" class="btn btn-outline-primary btn-sm">Keep Shopping</a>
+    </div>
+
+    @if (TempData["SuccessMessage"] != null) {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="bi bi-check-circle-fill me-2"></i> @TempData["SuccessMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+    }
+
+    @if (!Model.Any()) {
+        <div class="text-center py-5">
+            <i class="bi bi-cart-x text-muted" style="font-size: 3rem;"></i>
+            <p class="mt-3">You haven't placed any orders yet.</p>
+        </div>
+    } else {
+        <div class="row">
+            @foreach (var order in Model) {
+                <div class="col-12 mb-4">
+                    <div class="card shadow-sm">
+                        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                            <div>
+                                <span class="text-muted small">ORDER PLACED</span><br />
+                                <strong>@order.orderDate?.ToString("MMM dd, yyyy")</strong>
+                            </div>
+                            <div>
+                                <span class="text-muted small">TOTAL</span><br />
+                                <strong>$@order.totalPrice</strong>
+                            </div>
+                            <div>
+                                <span class="text-muted small">STATUS</span><br />
+                                <span class="badge bg-success">@order.status</span>
+                            </div>
+                            <div>
+                                <span class="text-muted small">ORDER #</span><br />
+                                <strong>@order.id</strong>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            @foreach (var item in order.OrderItems) {
+                                <div class="d-flex mb-3 border-bottom pb-3">
+                                    <img src="@item.product?.images" class="rounded me-3" style="width: 80px; height: 80px; object-fit: cover;" />
+                                    <div class="flex-grow-1">
+                                        <h5><a asp-controller="Product" asp-action="Detail" asp-route-id="@item.productId" class="text-decoration-none text-dark">@item.product?.title</a></h5>
+                                        <div class="text-muted small">Quantity: @item.quantity | Price: $@item.unitPrice</div>
+                                    </div>
+                                    <div class="text-end">
+                                        <div class="mb-2">
+                                            <a asp-controller="Product" asp-action="Detail" asp-route-id="@item.productId" class="btn btn-primary btn-sm w-100">Review Item</a>
+                                        </div>
+                                        <div>
+                                            <button type="button" class="btn btn-outline-danger btn-sm w-100" data-bs-toggle="modal" data-bs-target="#disputeModal-@order.id">
+                                                Return or Dispute
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Dispute Modal -->
+                                <div class="modal fade" id="disputeModal-@order.id" tabindex="-1" aria-hidden="true">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title">Raise a Dispute / Return</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                            </div>
+                                            <form asp-controller="Dispute" asp-action="Raise" method="post">
+                                                <div class="modal-body">
+                                                    <input type="hidden" name="orderId" value="@order.id" />
+                                                    <div class="mb-3">
+                                                        <label class="form-label">Reason for Dispute</label>
+                                                        <select name="reason" class="form-select" required>
+                                                            <option value="Item not received">Item not received</option>
+                                                            <option value="Item not as described">Item not as described</option>
+                                                            <option value="Defective item">Defective item</option>
+                                                            <option value="Other">Other</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <label class="form-label">Description</label>
+                                                        <textarea name="description" class="form-control" rows="4" required placeholder="Please provide details about the issue..."></textarea>
+                                                    </div>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                    <button type="submit" class="btn btn-danger">Submit Claim</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>

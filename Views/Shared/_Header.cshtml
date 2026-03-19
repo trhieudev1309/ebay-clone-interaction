@@ -1,0 +1,154 @@
+@inject Microsoft.AspNetCore.Http.IHttpContextAccessor HttpContextAccessor
+@using EbayChat.Entities
+
+@{
+	var username = HttpContextAccessor.HttpContext?.Session.GetString("username");
+	var avatar = HttpContextAccessor.HttpContext?.Session.GetString("avatarURL");
+}
+<header>
+	<div class="container">
+		<div class="row custom-nav">
+
+			<span class="col-auto">
+				@* ======= CHƯA ĐĂNG NHẬP ======= *@
+				@if (string.IsNullOrEmpty(username))
+				{
+					<span id="logorreg">
+						Hi! <a asp-controller="Auth" asp-action="Login" class="text-primary text-decoration-underline">Sign in</a> or
+						<a asp-controller="Auth" asp-action="Register" class="text-primary text-decoration-underline">register</a>
+					</span>
+				}
+				else
+				{
+					@* ======= ĐÃ ĐĂNG NHẬP – HIển Dropdown ======= *@
+					<div class="dropdown">
+						<button class="btn dropdown-toggle p-0 border-0 bg-transparent"
+								data-bs-toggle="dropdown" aria-expanded="false">
+							<span>Hi @username</span>
+						</button>
+
+						<ul class="dropdown-menu dropdown-menu-end">
+							<li>
+								<a class="dropdown-item text-danger"
+								   asp-controller="Auth" asp-action="Logout">
+									<i class="bi bi-box-arrow-right me-1"></i> Logout
+								</a>
+							</li>
+						</ul>
+					</div>
+				}
+			</span>
+			<a class="col-auto custom-link" href="">Help & Contact</a>
+
+			<a class="nav-spacing col-auto custom-link" href="">Ship to</a>
+			<a class="col-auto custom-link" asp-controller="Dispute" asp-action="Manage">Sell</a>
+			<div class="col-auto">
+				<a href="" class=" custom-nav" type="button">
+					Watchlist
+				</a>
+			</div>
+			<div class="dropdown col-auto">
+				<button class="btn dropdown-toggle custom-nav" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+					My eBay
+				</button>
+				<ul class="dropdown-menu">
+					<li><a class="dropdown-item" href="#">Summary</a></li>
+					<li><a class="dropdown-item" href="#">Recently Viewed</a></li>
+					<li><a class="dropdown-item" href="#">Bids/Offers</a></li>
+					<li><a class="dropdown-item" href="#">Watchlist</a></li>
+					<li><a class="dropdown-item" asp-controller="Order" asp-action="MyOrders">Purchase History</a></li>
+					<li><a class="dropdown-item" href="#">Buy Again</a></li>
+					<li><a class="dropdown-item" asp-controller="Dispute" asp-action="Manage">Selling</a></li>
+					<li><a class="dropdown-item" href="#">Saved Searches</a></li>
+					<li><a class="dropdown-item" href="#">Saved Sellers</a></li>
+					<li><a class="dropdown-item" href="/BoxChat">Messages</a></li>
+					<li><hr class="dropdown-divider"></li>
+					<li><a class="dropdown-item text-danger fw-bold" asp-controller="Dispute" asp-action="Manage"><i class="bi bi-shield-exclamation"></i> Resolution Center (Khiếu nại)</a></li>
+				</ul>
+			</div>
+
+			<img style="width: 45px; height: 30px;" src="/Assets/images/bell .svg" alt="">
+			<img style="width: 45px; height: 30px;" src="/Assets/images/cart.svg" alt="">
+		</div>
+	</div>
+	<hr class="custom-hr">
+
+
+	<div class="container">
+		<div class="row align-items-center">
+			<div class="col-lg-1">
+				<a asp-controller="Home" asp-action="Index">
+					<svg class="ebay-logo" xmlns="http://www.w3.org/2000/svg" viewBox=".1 .1 299.8 120.125">
+						<path fill="#e53238" d="M38.867 26.309C17.721 26.309.1 35.279.1 62.345c0 21.442 11.849 34.944 39.312 34.944 32.326 0 34.398-21.294 34.398-21.294H58.147s-3.358 11.466-19.69 11.466c-13.302 0-22.869-8.986-22.869-21.58h59.861v-7.904c0-12.46-7.91-31.668-36.582-31.668zM38.32 36.41c12.662 0 21.294 7.757 21.294 19.383h-43.68c0-12.343 11.268-19.383 22.386-19.383z" />
+						<path fill="#0064d2" d="M75.438.1v83.597c0 4.745-.339 11.408-.339 11.408h14.939s.537-4.785.537-9.159c0 0 7.381 11.548 27.451 11.548 21.134 0 35.49-14.674 35.49-35.695 0-19.557-13.186-35.286-35.456-35.286-20.854 0-27.334 11.261-27.334 11.261V.1H75.438zm38.766 36.753c14.352 0 23.479 10.652 23.479 24.946 0 15.328-10.541 25.355-23.376 25.355-15.318 0-23.581-11.961-23.581-25.219 0-12.354 7.414-25.082 23.478-25.082z" />
+						<path fill="#f5af02" d="M190.645 26.309c-31.812 0-33.852 17.418-33.852 20.202h15.834s.83-10.169 16.926-10.169c10.459 0 18.564 4.788 18.564 13.991v3.276h-18.564c-24.645 0-37.674 7.21-37.674 21.841 0 14.398 12.038 22.232 28.307 22.232 22.172 0 29.314-12.251 29.314-12.251 0 4.873.375 9.675.375 9.675h14.076s-.545-5.952-.545-9.76V52.432c0-21.582-17.408-26.123-32.761-26.123zm17.472 37.128v4.368c0 5.697-3.516 19.861-24.212 19.861-11.333 0-16.192-5.656-16.192-12.217 0-11.935 16.363-12.012 40.404-12.012z" />
+						<path fill="#86b817" d="M214.879 29.041h17.813l25.565 51.218 25.506-51.218H299.9l-46.459 91.184h-16.927l13.406-25.419-35.041-65.765z" />
+					</svg>
+				</a>
+
+			</div>
+
+
+
+			<button class="btn dropdown-toggle custom-category-button col-auto" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+				<span>Shop by</span><br>
+				<span>Category</span>
+			</button>
+			<ul class="dropdown-menu col-lg-6">
+				<div class="custom-cont">
+					<div class="row custom-style-dropdown" id="categoryDropdown"></div>
+				</div>
+			</ul>
+
+			<form class="col-lg-8" role="search">
+				<div class="input-group">
+					<input type="text" class="form-control search-input border-2 border-black" placeholder="Search for anything" aria-describedby="basic-addon1">
+
+					<div class="dropdown col-lg-2">
+						<button class="btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+							All Category
+						</button>
+						<ul class="dropdown-menu" id="categorySelect"></ul>
+					</div>
+
+					<button class="col-lg-2 btn btn-primary" type="button">Search</button>
+				</div>
+			</form>
+
+
+			<div class="col-lg-1">
+				<a href="" style="font-size: 12px;">Advanced</a>
+			</div>
+		</div>
+	</div>
+
+</header>
+<script>
+	document.addEventListener("DOMContentLoaded", function () {
+		fetch("/api/category")	
+			.then(response => response.json())
+			.then(data => {
+				// Block 1: category grid in dropdown menu
+				let dropdownGrid = document.getElementById("categoryDropdown");
+				dropdownGrid.innerHTML = "";
+				data.forEach(cat => {
+					dropdownGrid.innerHTML += `
+						<div class="col-lg-4">
+							<a class="text-black fw-bold" href="/Product?categoryId=${cat.id}">${cat.name}</a>
+							<hr>
+						</div>`;
+				});
+
+				// Block 2: search "All Category" dropdown
+				let selectMenu = document.getElementById("categorySelect");
+				selectMenu.innerHTML = "";
+				data.forEach(cat => {
+					selectMenu.innerHTML += `
+						<li>
+							<a class="dropdown-item" href="/Product?categoryId=${cat.id}">${cat.name}</a>
+						</li>`;
+				});
+			})
+			.catch(err => console.error("Error fetching categories:", err));
+	});
+</script>

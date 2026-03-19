@@ -1,0 +1,73 @@
+﻿@using EbayChat.Entities;
+@{
+    var categories = ViewBag.Categories as List<Category>;
+    var products = ViewBag.Products as List<Product>;
+    var selectedCategory = ViewBag.SelectedCategory as Category;
+    ViewData["Title"] = (selectedCategory == null) ? "Product Page" : selectedCategory.name + " Page";
+
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-controller="Home" asp-action="Index">eBay</a></li>
+        <li class="breadcrumb-item active" aria-current="page">
+			@(selectedCategory != null ? selectedCategory.name : "All Products")
+        </li>
+    </ol>
+</nav>
+
+<h1 class="mb-4">
+	@(selectedCategory != null ? selectedCategory.name : "All Products")
+</h1>
+
+<div class="row">
+    <!-- Sidebar -->
+    <aside class="col-md-3">
+        <h6 class="fw-bold mb-3">Shop by category</h6>
+        <ul class="list-group list-group-flush">
+            @foreach (var cat in categories)
+            {
+                <li class="list-group-item p-0 border-0">
+                    <a asp-controller="Product" asp-action="Index" asp-route-categoryId="@cat.id" class="d-block py-2 text-decoration-none text-dark">
+                        @cat.name
+                    </a>
+                </li>
+            }
+        </ul>
+    </aside>
+
+    <!-- Main content -->
+    <section class="col-md-9">
+        <!-- Banner -->
+        <div class="mb-4">
+            <img src="https://i.ebayimg.com/images/g/PpEAAOSwQU9oJezf/s-l2400.png" class="img-fluid rounded" alt="Banner" />
+        </div>
+
+        
+        <!-- Product grid -->
+		@if (products == null || !products.Any())
+		{
+			<p>No products available in this category.</p>
+		}
+        else{
+            <div class="row">
+                @foreach (var product in products)
+                {
+                    <div class="col-12 mb-4">
+                        <div class="card h-100 shadow-sm ">
+                            <div class="row">
+                                <img src="@product.images" class="card-img-top col-4" alt="@product.title" />
+                                <div class="card-body col-8">
+                                    <h3 class="card-title text-truncate">@product.title</h3>
+                                    <h4 class="fw-bold text-danger">@String.Format("{0:N0}", product.price) $</h4>
+                                    <small class="text-muted">Free shipping</small>
+                                </div>
+                            </div>
+                            
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </section>
+</div>
