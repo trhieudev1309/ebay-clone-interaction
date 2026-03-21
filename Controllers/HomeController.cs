@@ -23,8 +23,18 @@ namespace EbayChat.Controllers
             var categories = _categoryService.GetAllCategories().Result;
             var products = _productService.GetAllProducts().Result;
 
+            // Calculate average rating for each product
+            var productRatings = new Dictionary<int, double>();
+            foreach (var product in products)
+            {
+                var reviews = _productService.GetReviewsByProductId(product.id).Result;
+                double avgRating = reviews.Any() ? reviews.Average(r => r.rating ?? 0) : 0;
+                productRatings[product.id] = avgRating;
+            }
+
             ViewBag.Categories = categories;
             ViewBag.Products = products;
+            ViewBag.ProductRatings = productRatings;
             return View();
         }
 
