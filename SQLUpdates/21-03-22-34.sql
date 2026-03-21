@@ -1,0 +1,2 @@
+INSERT INTO [User] ( [username], [email], [password], [role], [avatarURL]) VALUES 
+('admin1', 'admin1@example.com', '123456', 'Admin', 'https://static.wixstatic.com/media/868f94_2f5588725fee45559920e92e675c0f25~mv2.jpg')
