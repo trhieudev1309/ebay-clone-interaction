@@ -1,11 +1,9 @@
+using System.Threading.RateLimiting;
 using EbayChat.Entities;
 using EbayChat.Hubs;
-using EbayChat.Entities;
 using EbayChat.Services.ServicesImpl;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.RateLimiting;
-using System.Threading.RateLimiting;
 
 namespace EbayChat
 {
@@ -50,7 +48,7 @@ namespace EbayChat
                         factory: partition => new FixedWindowRateLimiterOptions
                         {
                             AutoReplenishment = true,
-                            PermitLimit = 10, // Số request tối đa cho MỖI IP
+                            PermitLimit = 100, // Số request tối đa cho MỖI IP
                             Window = TimeSpan.FromMinutes(1), // Trong khoảng thời gian (1 phút)
                             QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
                             QueueLimit = 0 // Báo lỗi luôn nếu vượt quá, không chờ
@@ -59,13 +57,13 @@ namespace EbayChat
 
                 // Trả về lỗi 429 Too Many Requests khi vượt quá giới hạn
                 options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-                
+
                 // Optional: Customize the response body when rejected
                 options.OnRejected = async (context, token) =>
                 {
                     context.HttpContext.Response.StatusCode = 429;
                     context.HttpContext.Response.ContentType = "text/plain";
-                    await context.HttpContext.Response.WriteAsync("Bạn đã gửi quá nhiều yêu cầu. Vui lòng đợi 1 phút rồi thử lại.", cancellationToken: token);
+                    await context.HttpContext.Response.WriteAsync("Too many request, please try again in 1 minute", cancellationToken: token);
                 };
             });
 
@@ -117,7 +115,7 @@ namespace EbayChat
             app.UseRouting();
 
             app.UseAuthorization();
-            
+
             // Add Rate Limiter middleware right after authorization (or before routing depending on needs)
             // Placing it here protects endpoints while allowing static files to load fast
             app.UseRateLimiter();
