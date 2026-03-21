@@ -72,26 +72,125 @@ background-repeat:no-repeat">
 
 
 	<div class="row row-cols-2 row-cols-sm-3 row-cols-lg-5 g-4" id="cardGroup">
-		<!-- mỗi card nằm trong một .col -->
 		@foreach (var product in products)
 		{
-		<div class="col">
-			<!-- d-block + h-100 để link chiếm hết card, không phá grid -->
-			<a asp-controller="Product" asp-action="Detail" asp-route-id="@product.id" class="d-block h-100 text-decoration-none text-reset">
-				<div class="card h-100 shadow-sm">
-					<div class="position-relative">
-						<img src="@product.images" class="card-img-top" alt="@product.title" />
+			var avgRating = ViewBag.ProductRatings != null ? (double)ViewBag.ProductRatings[product.id] : 0;
+
+			<div class="col">
+				<a asp-controller="Product" asp-action="Detail" asp-route-id="@product.id" class="product-link d-block h-100 text-decoration-none text-reset">
+					<div class="card product-card h-100 border-0">
+						<div class="product-image-wrap position-relative">
+							<img src="@product.images" class="card-img-top product-image" alt="@product.title" />
+						</div>
+
+						<div class="card-body p-3 d-flex flex-column">
+							<p class="product-title mb-2" title="@product.title">@product.title</p>
+
+							<div class="d-flex align-items-center justify-content-between mb-2">
+								<strong class="product-price">@String.Format("{0:N0}", product.price) $</strong>
+								<span class="text-muted small">Best offer</span>
+							</div>
+
+							<div class="d-flex align-items-center gap-1 mt-auto">
+								<span class="text-warning">★</span>
+								<span class="fw-semibold">@avgRating.ToString("0.0")</span>
+								<span class="text-muted small">/ 5</span>
+							</div>
+
+							<div class="product-cta mt-2">
+								View details →
+							</div>
+						</div>
 					</div>
-					<div class="card-body p-2">
-						<p class="small mb-1 text-truncate">@product.title</p>
-						<strong>@String.Format("{0:N0}", product.price) $</strong>
-					</div>
-				</div>
-			</a>
-		</div>
+				</a>
+			</div>
 		}
 	</div>
-
 </div>
 
 <hr>
+
+<style>
+	.product-link {
+		transition: transform 0.2s;
+	}
+
+	.product-link:hover {
+		transform: translateY(-5px);
+	}
+
+	.product-card {
+		background-color: #fff;
+		border-radius: 0.5rem;
+		overflow: hidden;
+		box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+	}
+
+	.product-image-wrap {
+		position: relative;
+	}
+
+	.product-image {
+		width: 100%;
+		height: 200px;
+		object-fit: cover;
+	}
+
+	.product-badge {
+		position: absolute;
+		top: 10px;
+		right: 10px;
+		background-color: #007bff;
+		color: white;
+		padding: 0.25rem 0.5rem;
+		font-size: 0.875rem;
+		border-radius: 1rem;
+	}
+
+	.product-title {
+		font-size: 1rem;
+		font-weight: 500;
+		color: #333;
+	}
+
+	.product-price {
+		font-size: 1.25rem;
+		font-weight: bold;
+		color: #333;
+	}
+
+	.product-cta {
+		display: inline-block;
+		margin-top: auto;
+		padding: 0.5rem 1rem;
+		background-color: #007bff;
+		color: white;
+		font-weight: 500;
+		text-align: center;
+		border-radius: 0.25rem;
+		text-decoration: none;
+		transition: background-color 0.2s;
+	}
+
+	.product-cta:hover {
+		background-color: #0056b3;
+	}
+
+	.text-warning {
+		color: #ffc107;
+	}
+
+	.fw-semibold {
+		font-weight: 600;
+	}
+
+	.text-muted {
+		color: #6c757d;
+	}
+
+	.badge {
+		position: absolute;
+		top: 0.5rem;
+		right: 0.5rem;
+	}
+</style>
