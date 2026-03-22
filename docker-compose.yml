@@ -1,0 +1,35 @@
+version: "3.9"
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ebay-chat-app
+    ports:
+      - "5000:8080"
+      - "5001:8081"
+    depends_on:
+      - redis
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - Redis__ConnectionString=redis:6379
+    networks:
+      - app-network
+
+  redis:
+    image: redis:7
+    container_name: redis-chat
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    networks:
+      - app-network
+
+volumes:
+  redis_data:
+
+networks:
+  app-network:

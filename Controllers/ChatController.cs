@@ -43,14 +43,8 @@ namespace ChatApp.Controllers
                 return NotFound();
             }
 
-            // Lấy lịch sử tin nhắn
-            var messages = await _context.Messages
-                .Include(m => m.sender)
-                .Include(m => m.receiver)
-                .Where(m => (m.senderId == senderId && m.receiverId == receiverId) ||
-                           (m.senderId == receiverId && m.receiverId == senderId))
-                .OrderBy(m => m.timestamp)
-                .ToListAsync();
+            // Lấy lịch sử tin nhắn qua service (DB/Redis cache logic nằm trong service)
+            var messages = (await _chatServices.GetAllMessagesBySenderAndReceiver(senderId, receiverId)).ToList();
 
             ViewBag.SenderId = senderId;
             ViewBag.SenderName = sender.username;
@@ -60,7 +54,6 @@ namespace ChatApp.Controllers
             ViewBag.ProductId = productId;
             return View();
         }
-
 
         // API để thiết lập chat mới từ Product Page
         [HttpGet]
@@ -102,30 +95,37 @@ namespace ChatApp.Controllers
             return RedirectToAction("Chat", new { senderId = senderId, receiverId = receiverId, productId = productId });
         }
 
-
         // API để lấy lịch sử tin nhắn
         [HttpGet]
         public async Task<IActionResult> GetMessages(int senderId, int receiverId)
         {
-            var messages = await _context.Messages
-                .Include(m => m.sender)
-                .Where(m => (m.senderId == senderId && m.receiverId == receiverId) ||
-                           (m.senderId == receiverId && m.receiverId == senderId))
-                .OrderBy(m => m.timestamp)
-                .Select(m => new
-                {
-                    id = m.id,
-                    senderId = m.senderId,
-                    senderName = m.sender.username,
-                    receiverId = m.receiverId,
-                    content = m.content,
-                    sentAt = m.timestamp.Value.ToString("HH:mm dd/MM/yyyy"),
-                })
-                .ToListAsync();
+            // Fetch via service (uses cache-first strategy)
+            var messages = (await _chatServices.GetAllMessagesBySenderAndReceiver(senderId, receiverId)).ToList();
 
-            return Json(messages);
+            // Resolve sender names (service returns plain Message entities)
+            var senderIds = messages
+                .Where(m => m.senderId.HasValue)
+                .Select(m => m.senderId!.Value)
+                .Distinct()
+                .ToList();
+
+            var senderNames = await _context.Users
+                .Where(u => senderIds.Contains(u.id))
+                .ToDictionaryAsync(u => u.id, u => u.username ?? $"User {u.id}");
+
+            var result = messages.Select(m => new
+            {
+                id = m.id,
+                senderId = m.senderId,
+                senderName = m.senderId.HasValue && senderNames.TryGetValue(m.senderId.Value, out var name)
+                    ? name
+                    : $"User {m.senderId}",
+                receiverId = m.receiverId,
+                content = m.content,
+                sentAt = m.timestamp?.ToString("HH:mm dd/MM/yyyy") ?? string.Empty
+            });
+
+            return Json(result);
         }
-
-
     }
 }

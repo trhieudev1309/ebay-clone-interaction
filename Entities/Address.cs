@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-
-namespace EbayChat.Entities;
+﻿namespace EbayChat.Entities;
 
 public partial class Address
 {

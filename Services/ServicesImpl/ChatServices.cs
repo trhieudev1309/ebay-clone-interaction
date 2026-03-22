@@ -7,11 +7,19 @@ namespace EbayChat.Services.ServicesImpl
     public class ChatServices : IChatServices
     {
         private readonly CloneEbayDbContext _context;
-        public ChatServices(CloneEbayDbContext context)
+        private readonly IRedisCacheService _redisCacheService;
+        private readonly ILogger<ChatServices> _logger;
+
+        public ChatServices(
+            CloneEbayDbContext context,
+            IRedisCacheService redisCacheService,
+            ILogger<ChatServices> logger)
         {
             _context = context;
+            _redisCacheService = redisCacheService;
+            _logger = logger;
         }
-        // Lấy danh sách hộp chat của người dùng, senderId là Id lấy từ session
+
         public Task<IEnumerable<BoxChatDTO>> GetBoxChats(int userId)
         {
             var boxChats = _context.Messages
@@ -42,17 +50,39 @@ namespace EbayChat.Services.ServicesImpl
 
         public async Task<IEnumerable<Message>> GetAllMessagesBySenderAndReceiver(int senderId, int receiverId)
         {
-            return await _context.Messages
+            var conversationKey = ChatCacheKeyHelper.BuildConversationKey(senderId, receiverId);
+
+            var cachedMessages = await _redisCacheService.GetMessagesAsync(conversationKey);
+            if (cachedMessages.Count > 0)
+            {
+                _logger.LogInformation(
+                    "Returning chat messages from cache. senderId={SenderId}, receiverId={ReceiverId}",
+                    senderId,
+                    receiverId);
+
+                return cachedMessages;
+            }
+
+            _logger.LogInformation(
+                "Fetching chat messages from DB. senderId={SenderId}, receiverId={ReceiverId}",
+                senderId,
+                receiverId);
+
+            var messages = await _context.Messages
+                .AsNoTracking()
                 .Where(m =>
                     (m.senderId == senderId && m.receiverId == receiverId) ||
                     (m.senderId == receiverId && m.receiverId == senderId))
                 .OrderBy(m => m.timestamp)
                 .ToListAsync();
+
+            await _redisCacheService.SetMessagesAsync(conversationKey, messages, TimeSpan.FromMinutes(10));
+
+            return messages;
         }
 
         public async Task MarkAsSeen(int senderId, int receiverId)
         {
-            // Get all messages sent by 'sender' to 'receiver' that are not seen yet
             var unseenMessages = await _context.Messages
                 .Where(m => m.senderId == senderId && m.receiverId == receiverId && m.seen == false)
                 .ToListAsync();
@@ -65,10 +95,13 @@ namespace EbayChat.Services.ServicesImpl
                 }
 
                 await _context.SaveChangesAsync();
+
+                var conversationKey = ChatCacheKeyHelper.BuildConversationKey(senderId, receiverId);
+                await _redisCacheService.InvalidateMessagesAsync(conversationKey);
             }
         }
 
-        public async Task SendMessage(int senderId, int receiverId, String content, bool seen)
+        public async Task SendMessage(int senderId, int receiverId, string content, bool seen)
         {
             var newMessage = new Message
             {
@@ -78,9 +111,12 @@ namespace EbayChat.Services.ServicesImpl
                 timestamp = DateTime.UtcNow.AddHours(7),
                 seen = seen
             };
+
             _context.Messages.Add(newMessage);
             await _context.SaveChangesAsync();
-        }
 
+            var conversationKey = ChatCacheKeyHelper.BuildConversationKey(senderId, receiverId);
+            await _redisCacheService.InvalidateMessagesAsync(conversationKey);
+        }
     }
 }
