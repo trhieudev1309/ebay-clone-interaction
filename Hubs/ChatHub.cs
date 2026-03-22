@@ -20,6 +20,11 @@ namespace EbayChat.Hubs
             _logger = logger;
         }
 
+        public override async Task OnConnectedAsync()
+        {
+            Console.WriteLine($"Connected to: {Environment.MachineName}");
+            await base.OnConnectedAsync();
+        }
         private static string UserGroup(int userId)
         {
             return $"user-{userId}";
