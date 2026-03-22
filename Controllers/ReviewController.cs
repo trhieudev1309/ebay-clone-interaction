@@ -1,4 +1,5 @@
 using EbayChat.Entities;
+using EbayChat.Events;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -7,10 +8,12 @@ namespace EbayChat.Controllers
     public class ReviewController : Controller
     {
         private readonly CloneEbayDbContext _context;
+        private readonly IEventDispatcher _eventDispatcher;
 
-        public ReviewController(CloneEbayDbContext context)
+        public ReviewController(CloneEbayDbContext context, IEventDispatcher eventDispatcher)
         {
             _context = context;
+            _eventDispatcher = eventDispatcher;
         }
 
         [HttpPost]
@@ -34,7 +37,19 @@ namespace EbayChat.Controllers
             _context.Reviews.Add(review);
             await _context.SaveChangesAsync();
 
-            // Update Seller Feedback / Reputation
+            if (rating <= 2)
+            {
+                await _eventDispatcher.PublishAsync(
+                    new LowRatingDetectedEvent(
+                        userId.Value,
+                        productId,
+                        new Dictionary<string, string>
+                        {
+                            ["Rating"] = rating.ToString(),
+                            ["ReviewId"] = review.id.ToString()
+                        }));
+            }
+
             var product = await _context.Products.Include(p => p.seller).FirstOrDefaultAsync(p => p.id == productId);
             if (product != null && product.sellerId.HasValue)
             {

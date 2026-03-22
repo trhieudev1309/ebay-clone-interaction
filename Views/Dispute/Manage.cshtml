@@ -1,66 +1,283 @@
-@model IEnumerable<EbayChat.Entities.Dispute>
+@model List<EbayChat.Entities.Dispute>
+
 @{
     ViewData["Title"] = "Dispute Management";
+    var role = Context.Session.GetString("role")?.Trim();
+    var isAdmin = role == "Admin";
+    var isSeller = role == "Seller";
 }
+
+<div id="adminToastHost" class="admin-toast-host"></div>
 
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2><i class="bi bi-shield-exclamation text-danger"></i> Resolution Center</h2>
         <div>
-            @if (Context.Session.GetString("role") == "Seller") {
+            @if (isAdmin)
+            {
+                <span class="badge bg-danger">Admin Dashboard</span>
+            }
+            else if (isSeller)
+            {
                 <span class="badge bg-info text-dark">Seller Dashboard</span>
-            } else {
+            }
+            else
+            {
                 <span class="badge bg-primary">Buyer Dashboard</span>
             }
         </div>
     </div>
 
-    @if (!Model.Any()) {
-        <div class="card p-5 text-center bg-light">
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success">@TempData["SuccessMessage"]</div>
+    }
+
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger">@TempData["ErrorMessage"]</div>
+    }
+
+    @if (isAdmin)
+    {
+        <form id="antiForgeryHolder" class="d-none">
+            @Html.AntiForgeryToken()
+        </form>
+    }
+
+    @if (!Model.Any())
+    {
+        <div id="emptyDisputeCard" class="card p-5 text-center bg-light">
             <i class="bi bi-emoji-smile text-muted" style="font-size: 3rem;"></i>
             <p class="mt-3">No active disputes or claims found. Everything looks good!</p>
         </div>
-    } else {
-        <div class="table-responsive">
-            <table class="table table-hover align-middle border shadow-sm">
-                <thead class="table-dark">
-                    <tr>
-                        <th>Order #</th>
-                        <th>Raised By</th>
-                        <th>Details</th>
-                        <th>Status</th>
-                        <th>Resolution</th>
-                        <th>Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var dispute in Model) {
-                        <tr>
-                            <td><strong>@dispute.orderId</strong></td>
-                            <td>@dispute.raisedByNavigation?.username</td>
-                            <td>
-                                <div class="small text-truncate" style="max-width: 200px;" title="@dispute.description">
-                                    @dispute.description
-                                </div>
-                            </td>
-                            <td>
-                                @if (dispute.status == "Pending") {
-                                    <span class="badge rounded-pill bg-warning text-dark">Pending Review</span>
-                                } else if (dispute.status == "Resolved") {
-                                    <span class="badge rounded-pill bg-success">Resolved</span>
-                                } else {
-                                    <span class="badge rounded-pill bg-secondary">@dispute.status</span>
-                                }
-                            </td>
-                            <td><span class="text-muted italic">@dispute.resolution</span></td>
-                            <td>
-                                <a asp-controller="Order" asp-action="MyOrders" class="btn btn-sm btn-outline-dark">View Order</a>
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
     }
 
+    <div id="disputeTableWrap" class="table-responsive @(Model.Any() ? "" : "d-none")">
+        <table class="table table-hover align-middle border shadow-sm">
+            <thead class="table-dark">
+                <tr>
+                    <th>Order #</th>
+                    <th>Raised By</th>
+                    <th>Details</th>
+                    <th>Status</th>
+                    <th>Resolution</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="disputeTableBody">
+                @foreach (var dispute in Model)
+                {
+                    <tr data-dispute-id="@dispute.id">
+                        <td><strong>@dispute.orderId</strong></td>
+                        <td>@dispute.raisedByNavigation?.username</td>
+                        <td>
+                            <div class="small text-truncate" style="max-width: 200px;" title="@dispute.description">
+                                @dispute.description
+                            </div>
+                        </td>
+                        <td>
+                            @if (dispute.status == "Pending")
+                            {
+                                <span class="badge rounded-pill bg-warning text-dark">Pending Review</span>
+                            }
+                            else if (dispute.status == "Resolved")
+                            {
+                                <span class="badge rounded-pill bg-success">Resolved</span>
+                            }
+                            else if (dispute.status == "Rejected")
+                            {
+                                <span class="badge rounded-pill bg-danger">Rejected</span>
+                            }
+                            else
+                            {
+                                <span class="badge rounded-pill bg-secondary">@dispute.status</span>
+                            }
+                        </td>
+                        <td><span class="text-muted italic">@dispute.resolution</span></td>
+                        <td>
+                            @if (isAdmin)
+                            {
+                                <form asp-controller="Dispute" asp-action="UpdateStatus" method="post" class="d-flex flex-column gap-2">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="disputeId" value="@dispute.id" />
+                                    <select name="status" class="form-select form-select-sm">
+                                        <option value="Pending" selected="@(dispute.status == "Pending")">Pending</option>
+                                        <option value="In Review" selected="@(dispute.status == "In Review")">In Review</option>
+                                        <option value="Resolved" selected="@(dispute.status == "Resolved")">Resolved</option>
+                                        <option value="Rejected" selected="@(dispute.status == "Rejected")">Rejected</option>
+                                    </select>
+                                    <input name="resolution" class="form-control form-control-sm" value="@dispute.resolution" placeholder="Resolution note" />
+                                    <button type="submit" class="btn btn-sm btn-danger">Update</button>
+                                </form>
+                            }
+                            else
+                            {
+                                <a asp-controller="Order" asp-action="MyOrders" class="btn btn-sm btn-outline-dark">View Order</a>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @if (isAdmin)
+    {
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/6.0.1/signalr.min.js"></script>
+        <script>
+            (() => {
+                const toastHost = document.getElementById("adminToastHost");
+                const tableWrap = document.getElementById("disputeTableWrap");
+                const tableBody = document.getElementById("disputeTableBody");
+                const emptyCard = document.getElementById("emptyDisputeCard");
+                const antiForgery = document.querySelector('#antiForgeryHolder input[name="__RequestVerificationToken"]')?.value ?? "";
+
+                const escapeHtml = (str) =>
+                    String(str)
+                        .replaceAll("&", "&amp;")
+                        .replaceAll("<", "&lt;")
+                        .replaceAll(">", "&gt;")
+                        .replaceAll('"', "&quot;")
+                        .replaceAll("'", "&#039;");
+
+                const getStatusBadge = (status) => {
+                    if (status === "Pending") {
+                        return '<span class="badge rounded-pill bg-warning text-dark">Pending Review</span>';
+                    }
+                    if (status === "Resolved") {
+                        return '<span class="badge rounded-pill bg-success">Resolved</span>';
+                    }
+                    if (status === "Rejected") {
+                        return '<span class="badge rounded-pill bg-danger">Rejected</span>';
+                    }
+                    return `<span class="badge rounded-pill bg-secondary">${escapeHtml(status)}</span>`;
+                };
+
+                const showToast = (title, message) => {
+                    const toast = document.createElement("div");
+                    toast.className = "admin-toast-card";
+                    toast.innerHTML = `
+                        <div class="fw-semibold mb-1">${escapeHtml(title)}</div>
+                        <div class="small text-muted">${escapeHtml(message)}</div>
+                    `;
+                    toastHost.appendChild(toast);
+
+                    setTimeout(() => {
+                        toast.classList.add("hide");
+                        setTimeout(() => toast.remove(), 250);
+                    }, 3000);
+                };
+
+                const prependDisputeRow = (d) => {
+                    if (document.querySelector(`tr[data-dispute-id="${d.id}"]`)) {
+                        return;
+                    }
+
+                    if (emptyCard) {
+                        emptyCard.classList.add("d-none");
+                    }
+                    tableWrap.classList.remove("d-none");
+
+                    const row = document.createElement("tr");
+                    row.setAttribute("data-dispute-id", d.id);
+
+                    row.innerHTML = `
+                        <td><strong>${escapeHtml(d.orderId)}</strong></td>
+                        <td>${escapeHtml(d.raisedBy)}</td>
+                        <td>
+                            <div class="small text-truncate" style="max-width: 200px;" title="${escapeHtml(d.description)}">
+                                ${escapeHtml(d.description)}
+                            </div>
+                        </td>
+                        <td>${getStatusBadge(d.status)}</td>
+                        <td><span class="text-muted italic">${escapeHtml(d.resolution)}</span></td>
+                        <td>
+                            <form action="/Dispute/UpdateStatus" method="post" class="d-flex flex-column gap-2">
+                                <input type="hidden" name="__RequestVerificationToken" value="${escapeHtml(antiForgery)}" />
+                                <input type="hidden" name="disputeId" value="${escapeHtml(d.id)}" />
+                                <select name="status" class="form-select form-select-sm">
+                                    <option value="Pending" ${d.status === "Pending" ? "selected" : ""}>Pending</option>
+                                    <option value="In Review" ${d.status === "In Review" ? "selected" : ""}>In Review</option>
+                                    <option value="Resolved" ${d.status === "Resolved" ? "selected" : ""}>Resolved</option>
+                                    <option value="Rejected" ${d.status === "Rejected" ? "selected" : ""}>Rejected</option>
+                                </select>
+                                <input name="resolution" class="form-control form-control-sm" value="${escapeHtml(d.resolution)}" placeholder="Resolution note" />
+                                <button type="submit" class="btn btn-sm btn-danger">Update</button>
+                            </form>
+                        </td>
+                    `;
+
+                    tableBody.prepend(row);
+                };
+
+                const connection = new signalR.HubConnectionBuilder()
+                    .withUrl("/adminNotificationHub")
+                    .withAutomaticReconnect()
+                    .build();
+
+                connection.on("AdminEventReceived", async (eventData) => {
+                    showToast(eventData.eventType ?? "New Event", eventData.message ?? "Admin event received.");
+
+                    if (eventData.eventType !== "DisputeCreatedEvent") {
+                        return;
+                    }
+
+                    const disputeIdRaw = eventData?.sourcePayload?.DisputeId ?? eventData?.sourcePayload?.disputeId;
+                    const disputeId = Number(disputeIdRaw);
+
+                    if (!Number.isFinite(disputeId) || disputeId <= 0) {
+                        return;
+                    }
+
+                    try {
+                        const response = await fetch(`/Dispute/GetById?id=${disputeId}`, {
+                            headers: { "X-Requested-With": "XMLHttpRequest" }
+                        });
+
+                        if (!response.ok) return;
+
+                        const dispute = await response.json();
+                        prependDisputeRow(dispute);
+                    } catch (error) {
+                        console.error("Failed to fetch live dispute:", error);
+                    }
+                });
+
+                connection.start()
+                    .then(() => connection.invoke("JoinAdminDashboard"))
+                    .catch(err => console.error("Admin notification hub error:", err));
+            })();
+        </script>
+
+        <style>
+            .admin-toast-host {
+                position: fixed;
+                top: 16px;
+                right: 16px;
+                z-index: 1080;
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+                width: 320px;
+                pointer-events: none;
+            }
+
+            .admin-toast-card {
+                background: #ffffff;
+                border-left: 4px solid #dc3545;
+                border-radius: 10px;
+                box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+                padding: 12px 14px;
+                opacity: 1;
+                transform: translateX(0);
+                transition: opacity 0.25s ease, transform 0.25s ease;
+            }
+
+            .admin-toast-card.hide {
+                opacity: 0;
+                transform: translateX(20px);
+            }
+        </style>
+    }
 </div>
