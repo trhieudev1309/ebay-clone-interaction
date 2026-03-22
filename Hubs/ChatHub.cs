@@ -1,4 +1,5 @@
 using EbayChat.Entities;
+using EbayChat.Services;
 using Microsoft.AspNetCore.SignalR;
 
 namespace EbayChat.Hubs
@@ -6,7 +7,18 @@ namespace EbayChat.Hubs
     public class ChatHub : Hub
     {
         private readonly CloneEbayDbContext _context;
-        public ChatHub(CloneEbayDbContext context) => _context = context;
+        private readonly IRedisCacheService _redisCacheService;
+        private readonly ILogger<ChatHub> _logger;
+
+        public ChatHub(
+            CloneEbayDbContext context,
+            IRedisCacheService redisCacheService,
+            ILogger<ChatHub> logger)
+        {
+            _context = context;
+            _redisCacheService = redisCacheService;
+            _logger = logger;
+        }
 
         private static string UserGroup(int userId)
         {
@@ -33,6 +45,15 @@ namespace EbayChat.Hubs
 
             _context.Messages.Add(newMessage);
             await _context.SaveChangesAsync();
+
+            var conversationKey = ChatCacheKeyHelper.BuildConversationKey(senderId, receiverId);
+            await _redisCacheService.InvalidateMessagesAsync(conversationKey);
+
+            _logger.LogInformation(
+                "Chat message persisted and cache invalidated. senderId={SenderId}, receiverId={ReceiverId}, key={ConversationKey}",
+                senderId,
+                receiverId,
+                conversationKey);
 
             var sender = await _context.Users.FindAsync(senderId);
             var traceId = Guid.NewGuid().ToString("N").Substring(0, 8).ToUpper();

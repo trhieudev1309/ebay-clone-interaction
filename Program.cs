@@ -6,6 +6,7 @@ using EbayChat.Hubs;
 using EbayChat.Services.ServicesImpl;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
+using StackExchange.Redis;
 
 namespace EbayChat
 {
@@ -17,7 +18,7 @@ namespace EbayChat
 
             // Persist Data Protection keys to /keys (mounted volume)
             builder.Services.AddDataProtection()
-                .PersistKeysToFileSystem(new DirectoryInfo(@"/keys"))
+                .PersistKeysToFileSystem(new DirectoryInfo("/app/keys"))
                 .SetApplicationName("EbayChatApp");
 
             // Add DbContext
@@ -31,6 +32,16 @@ namespace EbayChat
             builder.Services.AddScoped<Services.IChatServices, ChatServices>();
             builder.Services.AddScoped<Services.ICategoryService, CategoryService>();
             builder.Services.AddScoped<Services.IProductService, ProductService>();
+
+            // Redis multiplexer singleton (thread-safe by design)
+            builder.Services.AddSingleton<IConnectionMultiplexer>(_ =>
+            {
+                var redisConnectionString = builder.Configuration.GetValue<string>("Redis:ConnectionString") ?? "localhost:6379";
+                return ConnectionMultiplexer.Connect(redisConnectionString);
+            });
+
+            builder.Services.AddScoped<Services.IRedisCacheService, RedisCacheService>();
+
             builder.Services.AddHttpClient(); // for HttpClientFactory
 
             // Add view engines
