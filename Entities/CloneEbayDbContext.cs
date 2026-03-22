@@ -21,6 +21,8 @@ public partial class CloneEbayDbContext : DbContext
 
     public virtual DbSet<Feedback> Feedbacks { get; set; }
 
+    public virtual DbSet<AdminEvent> AdminEvents { get; set; }
+
     public virtual DbSet<Inventory> Inventories { get; set; }
 
     public virtual DbSet<Message> Messages { get; set; }
