@@ -5,6 +5,7 @@ using EbayChat.Events.Handlers;
 using EbayChat.Hubs;
 using EbayChat.Services.ServicesImpl;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using StackExchange.Redis;
 
@@ -15,10 +16,13 @@ namespace EbayChat
         public static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
+            builder.WebHost.UseUrls("http://0.0.0.0:8080");
+
+            var redis = ConnectionMultiplexer.Connect(builder.Configuration["Redis:ConnectionString"]!);
 
             // Persist Data Protection keys to /keys (mounted volume)
             builder.Services.AddDataProtection()
-                .PersistKeysToFileSystem(new DirectoryInfo("/app/keys"))
+                .PersistKeysToStackExchangeRedis(redis, "DataProtection-Keys")
                 .SetApplicationName("EbayChatApp");
 
             // Add DbContext
@@ -36,8 +40,7 @@ namespace EbayChat
             // Redis multiplexer singleton (thread-safe by design)
             builder.Services.AddSingleton<IConnectionMultiplexer>(_ =>
             {
-                var redisConnectionString = builder.Configuration.GetValue<string>("Redis:ConnectionString") ?? "localhost:6379";
-                return ConnectionMultiplexer.Connect(redisConnectionString);
+                return redis;
             });
 
             builder.Services.AddScoped<Services.IRedisCacheService, RedisCacheService>();
@@ -54,7 +57,9 @@ namespace EbayChat
                 {
                     // Lấy IP của người dùng làm khóa phân loại (Partition Key)
                     // Nếu IP null, dùng chuỗi "anonymous"
-                    var clientIp = httpContext.Connection.RemoteIpAddress?.ToString() ?? "anonymous";
+                    var clientIp = httpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
+               ?? httpContext.Connection.RemoteIpAddress?.ToString()
+               ?? "anonymous";
 
                     return RateLimitPartition.GetFixedWindowLimiter(
                         partitionKey: clientIp,
@@ -80,17 +85,10 @@ namespace EbayChat
                 };
             });
 
-            // Always add SignalR
+            // Always add SignalR with Redis backplane for real-time features
             var signalR = builder.Services.AddSignalR();
 
-            // Only use Redis backplane in production
-            if (builder.Environment.IsProduction())
-            {
-                signalR.AddStackExchangeRedis("redis:6379", options =>
-                {
-                    options.Configuration.ChannelPrefix = "EbayChat";
-                });
-            }
+            signalR.AddStackExchangeRedis(builder.Configuration["Redis:ConnectionString"]!);
 
             // Add distributed SQL Server cache for sessions
             builder.Services.AddDistributedSqlServerCache(options =>
@@ -108,7 +106,7 @@ namespace EbayChat
                 options.Cookie.HttpOnly = true;
                 options.Cookie.IsEssential = true;
                 options.Cookie.Name = ".EbayChat.Session";       // same for all containers
-                options.Cookie.SecurePolicy = CookieSecurePolicy.Always; // if using HTTPS
+                options.Cookie.SecurePolicy = CookieSecurePolicy.None; // if using HTTPS
             });
 
             builder.Services.AddScoped<IEventDispatcher, EventDispatcher>();
@@ -122,7 +120,10 @@ namespace EbayChat
 
             var app = builder.Build();
 
-
+            app.UseForwardedHeaders(new ForwardedHeadersOptions
+            {
+                ForwardedHeaders = ForwardedHeaders.All
+            });
 
             // Configure the HTTP request pipeline.
             if (!app.Environment.IsDevelopment())
