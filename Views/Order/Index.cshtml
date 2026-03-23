@@ -106,3 +106,48 @@
         </div>
     }
 </div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Find all dispute forms on the page
+            const disputeForms = document.querySelectorAll('form[action*="Dispute/Raise"]');
+            
+            disputeForms.forEach(form => {
+                const orderIdInput = form.querySelector('input[name="orderId"]');
+                if (!orderIdInput) return;
+                
+                const orderId = orderIdInput.value;
+                const reasonSelect = form.querySelector('select[name="reason"]');
+                const descriptionTextarea = form.querySelector('textarea[name="description"]');
+                const storageKey = `disputeDraft_order_${orderId}`;
+
+                // 1. Load draft if it exists in localStorage
+                const draft = localStorage.getItem(storageKey);
+                if (draft) {
+                    try {
+                        const parsedDraft = JSON.parse(draft);
+                        if (parsedDraft.reason && reasonSelect) reasonSelect.value = parsedDraft.reason;
+                        if (parsedDraft.description && descriptionTextarea) descriptionTextarea.value = parsedDraft.description;
+                    } catch (e) {
+                        console.error('Error parsing dispute draft for order ' + orderId, e);
+                    }
+                }
+
+                // 2. Save draft continuously when user types or changes select
+                form.addEventListener('input', () => {
+                   const draftData = {
+                       reason: reasonSelect ? reasonSelect.value : '',
+                       description: descriptionTextarea ? descriptionTextarea.value : ''
+                   };
+                   localStorage.setItem(storageKey, JSON.stringify(draftData));
+                });
+
+                // 3. Clear draft upon form submission
+                form.addEventListener('submit', () => {
+                    localStorage.removeItem(storageKey);
+                });
+            });
+        });
+    </script>
+}

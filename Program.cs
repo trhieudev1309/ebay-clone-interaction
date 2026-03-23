@@ -18,12 +18,18 @@ namespace EbayChat
             var builder = WebApplication.CreateBuilder(args);
             builder.WebHost.UseUrls("http://0.0.0.0:8080");
 
-            var redis = ConnectionMultiplexer.Connect(builder.Configuration["Redis:ConnectionString"]!);
+            var redisConfig = builder.Configuration["Redis:ConnectionString"] ?? "localhost:6379";
+            var redisOptions = ConfigurationOptions.Parse(redisConfig);
+            redisOptions.AbortOnConnectFail = false;
+            var redis = ConnectionMultiplexer.Connect(redisOptions);
 
             // Persist Data Protection keys to /keys (mounted volume)
-            builder.Services.AddDataProtection()
-                .PersistKeysToStackExchangeRedis(redis, "DataProtection-Keys")
+            var dpBuilder = builder.Services.AddDataProtection()
                 .SetApplicationName("EbayChatApp");
+            if (redis.IsConnected)
+            {
+                dpBuilder.PersistKeysToStackExchangeRedis(redis, "DataProtection-Keys");
+            }
 
             // Add DbContext
             builder.Services.AddDbContext<CloneEbayDbContext>(options =>
@@ -88,7 +94,10 @@ namespace EbayChat
             // Always add SignalR with Redis backplane for real-time features
             var signalR = builder.Services.AddSignalR();
 
-            signalR.AddStackExchangeRedis(builder.Configuration["Redis:ConnectionString"]!);
+            if (redis.IsConnected)
+            {
+                signalR.AddStackExchangeRedis(redisOptions.ToString());
+            }
 
             // Add distributed SQL Server cache for sessions
             builder.Services.AddDistributedSqlServerCache(options =>

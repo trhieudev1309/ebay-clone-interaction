@@ -280,4 +280,65 @@
             }
         </style>
     }
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Re-apply event listeners when DOM changes due to SignalR adding forms (if necessary)
+            // But we will use Event Delegation on the Table Body to catch inputs across all forms gracefully
+            const tableBody = document.getElementById("disputeTableBody");
+            if (!tableBody) return;
+
+            // 1. Load drafts for existing forms on page load
+            const updateForms = document.querySelectorAll('form[action*="Dispute/UpdateStatus"]');
+            updateForms.forEach(form => {
+                const disputeIdInput = form.querySelector('input[name="disputeId"]');
+                if (!disputeIdInput) return;
+                
+                const disputeId = disputeIdInput.value;
+                const statusSelect = form.querySelector('select[name="status"]');
+                const resolutionInput = form.querySelector('input[name="resolution"]');
+                const storageKey = `adminResolutionDraft_${disputeId}`;
+
+                const draft = localStorage.getItem(storageKey);
+                if (draft) {
+                    try {
+                        const parsed = JSON.parse(draft);
+                        if (parsed.status && statusSelect) statusSelect.value = parsed.status;
+                        if (parsed.resolution && resolutionInput) resolutionInput.value = parsed.resolution;
+                    } catch(e) {}
+                }
+            });
+
+            // 2. Event delegation for input (handles dynamic forms too)
+            tableBody.addEventListener('input', (e) => {
+                const form = e.target.closest('form[action*="Dispute/UpdateStatus"]');
+                if (!form) return;
+
+                const disputeIdInput = form.querySelector('input[name="disputeId"]');
+                if (!disputeIdInput) return;
+
+                const disputeId = disputeIdInput.value;
+                const statusSelect = form.querySelector('select[name="status"]');
+                const resolutionInput = form.querySelector('input[name="resolution"]');
+                
+                const storageKey = `adminResolutionDraft_${disputeId}`;
+                const draftData = {
+                    status: statusSelect ? statusSelect.value : '',
+                    resolution: resolutionInput ? resolutionInput.value : ''
+                };
+                localStorage.setItem(storageKey, JSON.stringify(draftData));
+            });
+
+            // 3. Event delegation for submit
+            tableBody.addEventListener('submit', (e) => {
+                const form = e.target.closest('form[action*="Dispute/UpdateStatus"]');
+                if (!form) return;
+
+                const disputeIdInput = form.querySelector('input[name="disputeId"]');
+                if (disputeIdInput) {
+                    localStorage.removeItem(`adminResolutionDraft_${disputeIdInput.value}`);
+                }
+            });
+        });
+    </script>
 </div>
