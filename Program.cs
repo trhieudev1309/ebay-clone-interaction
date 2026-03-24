@@ -66,7 +66,7 @@ namespace EbayChat
                         factory: partition => new FixedWindowRateLimiterOptions
                         {
                             AutoReplenishment = true,
-                            PermitLimit = 100, // Số request tối đa cho MỖI IP
+                            PermitLimit = 100,
                             Window = TimeSpan.FromMinutes(1), // Trong khoảng thời gian (1 phút)
                             QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
                             QueueLimit = 0 // Báo lỗi luôn nếu vượt quá, không chờ

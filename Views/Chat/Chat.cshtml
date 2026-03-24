@@ -93,10 +93,31 @@
         }
 
         .typing-indicator {
-            font-size: 14px;
-            font-style: italic;
-            opacity: 0.8;
             display: none;
+            align-items: center;
+            opacity: 0.8;
+            color: white;
+        }
+
+        .typing-dots {
+            display: inline-flex;
+            gap: 3px;
+        }
+
+        .typing-dots .dot {
+            width: 5px;
+            height: 5px;
+            background-color: white;
+            border-radius: 50%;
+            animation: bounce 1.4s infinite ease-in-out both;
+        }
+
+        .typing-dots .dot:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dots .dot:nth-child(2) { animation-delay: -0.16s; }
+
+        @@keyframes bounce {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
         }
 
         .messages-container {
@@ -229,7 +250,12 @@
                 <div class="receiver-info">
                     <h2>@receiverName</h2>
                     <div class="receiver-status">
-                        <span id="typingIndicator" class="typing-indicator">Đang nhập...</span>
+                        <span id="typingIndicator" class="typing-indicator" style="display: none;">
+                            <span class="typing-dots">
+                                <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+                            </span>
+                            <span style="font-size: 13px; margin-left: 5px;">Đang gõ...</span>
+                        </span>
                         <span id="onlineStatus">Online</span>
                     </div>
                 </div>
@@ -307,9 +333,13 @@
 
         // Nhận message
         connection.on("ReceiveMessage", (messageData) => {
+          const mSender = parseInt(messageData.senderId);
+          const mReceiver = parseInt(messageData.receiverId);
+          const sId = parseInt(senderId);
+          const rId = parseInt(receiverId);
+
           // Only process messages relevant to this 1-on-1 window
-          if ((messageData.senderId === senderId && messageData.receiverId === receiverId) ||
-              (messageData.senderId === receiverId && messageData.receiverId === senderId)) {
+          if ((mSender === sId && mReceiver === rId) || (mSender === rId && mReceiver === sId)) {
               displayMessage(messageData);
           }
         });
@@ -341,24 +371,36 @@
             const messages = await res.json();
             const container = document.getElementById("messagesContainer");
             container.innerHTML = "";
-            messages.forEach(displayMessage);
+            
+            // Dùng DocumentFragment để tối ưu render, không bị đơ trình duyệt khi nạp nhiều tin nhắn
+            const fragment = document.createDocumentFragment();
+            messages.forEach(msg => {
+                fragment.appendChild(createMessageDOM(msg));
+            });
+            
+            container.appendChild(fragment);
             scrollToBottom();
           } catch (e) {
             console.error("Error loading messages:", e);
           }
         }
 
-        // Render message
-        function displayMessage(messageData) {
-          const container = document.getElementById("messagesContainer");
+        function createMessageDOM(messageData) {
           const div = document.createElement("div");
-          div.className = (messageData.senderId === senderId) ? "message sent" : "message received";
+          const isSentByMe = parseInt(messageData.senderId) === parseInt(senderId);
+          div.className = isSentByMe ? "message sent" : "message received";
           div.innerHTML = `
             <div class="message-content">
               <div class="message-text">${escapeHtml(messageData.content)}</div>
               <div class="message-time">${messageData.sentAt}</div>
             </div>`;
-          container.appendChild(div);
+          return div;
+        }
+
+        // Render tin nhắn vào thời gian thực mượt mà (chỉ móc thêm thẻ DOM)
+        function displayMessage(messageData) {
+          const container = document.getElementById("messagesContainer");
+          container.appendChild(createMessageDOM(messageData));
           scrollToBottom();
         }
 

@@ -35,6 +35,13 @@
 
             <div class="chat-messages" id="messagesContainer"></div>
 
+            <!-- Typing indicator element (Hidden by default) -->
+            <div id="typingIndicator" class="typing-indicator d-none">
+                <div class="typing-dots">
+                    <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+                </div>
+                <span class="typing-text">Người kia đang gõ...</span>
+            </div>
             <div class="chat-input-area">
                 <div class="input-group">
                     <input type="text" class="form-control" id="messageInput" placeholder="Type a message...">
@@ -51,6 +58,6 @@
         const currentUserId = @ViewBag.UserId;
         const initialChats = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model));
     </script>
-    <script src="~/js/chat-logic.js" asp-append-version="true"></script>
+    <script src="~/js/chat-logic.js?v=@DateTime.Now.Ticks"></script>
 </body>
 </html>
