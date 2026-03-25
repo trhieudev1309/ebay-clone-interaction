@@ -99,12 +99,11 @@ namespace EbayChat
                 signalR.AddStackExchangeRedis(redisOptions.ToString());
             }
 
-            // Add distributed SQL Server cache for sessions
-            builder.Services.AddDistributedSqlServerCache(options =>
+            // Add distributed Redis cache for sessions (replaces SQL cache)
+            builder.Services.AddStackExchangeRedisCache(options =>
             {
-                options.ConnectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-                options.SchemaName = "dbo";
-                options.TableName = "SessionCache";
+                options.Configuration = builder.Configuration["Redis:ConnectionString"] ?? "localhost:6379";
+                options.InstanceName = "EbayChatSession:";
             });
 
             // Add session support
