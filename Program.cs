@@ -16,7 +16,6 @@ namespace EbayChat
         public static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
-            builder.WebHost.UseUrls("http://0.0.0.0:8080");
 
             var redis = ConnectionMultiplexer.Connect(builder.Configuration["Redis:ConnectionString"]!);
 
@@ -53,36 +52,24 @@ namespace EbayChat
             // Add Rate Limiting (Partitioned by User/IP)
             builder.Services.AddRateLimiter(options =>
             {
-                options.AddPolicy("GlobalLimiter", httpContext =>
+                options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
                 {
-                    // Lấy IP của người dùng làm khóa phân loại (Partition Key)
-                    // Nếu IP null, dùng chuỗi "anonymous"
                     var clientIp = httpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
-               ?? httpContext.Connection.RemoteIpAddress?.ToString()
-               ?? "anonymous";
+                        ?? httpContext.Connection.RemoteIpAddress?.ToString()
+                        ?? "anonymous";
 
                     return RateLimitPartition.GetFixedWindowLimiter(
-                        partitionKey: clientIp,
-                        factory: partition => new FixedWindowRateLimiterOptions
+                        clientIp,
+                        _ => new FixedWindowRateLimiterOptions
                         {
+                            PermitLimit = 100,
+                            Window = TimeSpan.FromMinutes(1),
                             AutoReplenishment = true,
-                            PermitLimit = 100, // Số request tối đa cho MỖI IP
-                            Window = TimeSpan.FromMinutes(1), // Trong khoảng thời gian (1 phút)
-                            QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
-                            QueueLimit = 0 // Báo lỗi luôn nếu vượt quá, không chờ
+                            QueueLimit = 0
                         });
                 });
 
-                // Trả về lỗi 429 Too Many Requests khi vượt quá giới hạn
-                options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-
-                // Optional: Customize the response body when rejected
-                options.OnRejected = async (context, token) =>
-                {
-                    context.HttpContext.Response.StatusCode = 429;
-                    context.HttpContext.Response.ContentType = "text/plain";
-                    await context.HttpContext.Response.WriteAsync("Too many request, please try again in 1 minute", cancellationToken: token);
-                };
+                options.RejectionStatusCode = 429;
             });
 
             // Always add SignalR with Redis backplane for real-time features
@@ -91,11 +78,10 @@ namespace EbayChat
             signalR.AddStackExchangeRedis(builder.Configuration["Redis:ConnectionString"]!);
 
             // Add distributed SQL Server cache for sessions
-            builder.Services.AddDistributedSqlServerCache(options =>
+            builder.Services.AddStackExchangeRedisCache(options =>
             {
-                options.ConnectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-                options.SchemaName = "dbo";
-                options.TableName = "SessionCache";
+                options.Configuration = builder.Configuration["Redis:ConnectionString"];
+                options.InstanceName = "EbayChatSession:";
             });
 
             // Add session support
@@ -150,8 +136,7 @@ namespace EbayChat
             app.MapControllerRoute(
                 name: "default",
                 pattern: "{controller=Home}/{action=Index}/{id?}")
-                .WithStaticAssets()
-                .RequireRateLimiting("GlobalLimiter");
+                .WithStaticAssets();
 
             app.Run();
         }
